@@ -1,4 +1,3 @@
-from numpy.lib.function_base import delete
 import main
 import numpy as np
 
@@ -73,41 +72,44 @@ def algorithmX(cover, reqLst=[]):
         coverMid = deleteOtherCol(cover,req)
     
     loopNum = 0
+
+    
+    #randArr = np.random.randint(0,coverMid.shape[1],size=coverMid.shape[0])
     while True:
         coverOut = coverMid
         randArr = np.random.randint(0,coverOut.shape[1],size=coverOut.shape[0])
 
-        finalSet = {}
-        isSuccess = True
+        finalSet = set()
         for loopNum1 in range(coverOut.shape[0]):
+            print(loopNum1)
 
             if coverOut.shape[0] == 1:
-                return coverOut
+                return finalSet
 
             i = loopNum1%(coverOut.shape[0]-1) #so algorithm loops around
 
             if np.count_nonzero(coverOut[i,:]) == 0:
-                print('fuckky')
                 break
             subArray = coverOut[:, coverOut[i,:] == 1] #selects just the rows where there is a one
 
 
-            randNum = randArr[i]%subArray.shape[1]
+            randNum = randArr[loopNum1]%subArray.shape[1]
             safeCol = subArray[coverOut.shape[0]-1,randNum]
 
             finalSet.add(safeCol)
             
 
-            arrWhereIs1 = [x for x in range(coverOut.shape[0]) if coverOut[ x, coverOut[coverOut.shape[0]-1,:] == safeCol  ]]
+            arrWhereIs1 = [x for x in range(coverOut.shape[0]) if coverOut[ x, coverOut[coverOut.shape[0]-1,:] == safeCol  ] == 1]
             for loopNum2 in range(len(arrWhereIs1)):
                 delIdx = arrWhereIs1[loopNum2] - loopNum2
-                coverOut = coverOut[:, (coverOut[delIdx,:] != 1) | (coverOut[coverOut.shape[0]-1,:] == safeCol)]
+
+                #print(delIdx)
+                coverOut = coverOut[:, (coverOut[delIdx,:] != 1)]
+                
                 coverOut = coverOut[:, [x for x in range(coverOut.shape[1]) if x != delIdx] ]
         
-        if isSuccess:
-            return coverOut[coverOut.shape[0]-1,:]
         
-        if loopNum == LOOPBREAKNUM:
+        if loopNum >= LOOPBREAKNUM:
             print('fuck')
             break
 
