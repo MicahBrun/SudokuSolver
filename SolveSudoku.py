@@ -1,5 +1,7 @@
+from numpy.lib.function_base import delete
 import main
 import numpy as np
+
 
 def int2bmtuple(n,m=9):
     #converts an integer into a tuple represeenting its digits in base 9
@@ -21,7 +23,7 @@ def bmtuple2int(bmtuple,m=9):
 
 
 
-def createSudokuCover(size):
+def createSudokuCover(size=3):
     cover = np.zeros((4*(size**2)**2+1,(size**2)**3),dtype=int) #row is the constraint sets, column is the possibility (row,column,num)
     for i in range((size**2)**3): #The final row will store the initial index
         cover[4*(size**2)**2,i] = i
@@ -53,8 +55,54 @@ def createSudokuCover(size):
 
     return cover
 
-#def deleteOtherCol
+def deleteOtherCol(cover,req):
+    shape = cover.shape
+
+    coverOut = cover
+    numDel = 0
+    for i in [x for x in range(shape[1]) if cover[shape[1]-1,x] != req[1]]:
+        if cover[req[0],i] == 1:
+            coverOut = np.delete(coverOut, i - numDel, axis = 1)
+    
+    return coverOut
+
+
 
 def algorithmX(cover, reqLst=[[]]):
-    shape = cover.shape
+    LOOPBREAKNUM = 100
+
+    coverMid = cover
+
+    for req in reqLst:
+        coverMid = deleteOtherCol(cover,req)
+    
+    loopNum = 0
+    while True:
+        coverOut = coverMid
+
+        isSuccess = True
+        for i in range(coverOut.shape[0]):
+            if np.count_nonzero( coverOut[i,:] ) == 0:
+                isSuccess = False
+                break
+
+            subArray = coverOut[[i,coverOut.shape[1]], coverOut[i,:] == 1]
+
+            randNum = np.random.randint(0,subArray.size[1])
+            safeCol = subArray[1,randNum]
+
+            coverOut = coverOut[:, (coverOut[i,:] == 1) | (coverOut[coverOut.size[0]-1,:] == safeCol)]
+        
+        if isSuccess:
+            return coverOut[coverOut.shape[1]-1,:]
+        
+        if loopNum == LOOPBREAKNUM:
+            break
+        
+            
+                
+        
+
+
+
 
