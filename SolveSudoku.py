@@ -31,7 +31,7 @@ def createSudokuCover(size=3):
     
     #sets the members of all the sets under restrictions row-column, column-number, number-row
     tEle=np.array([0,0,0])
-    for a in range(2):
+    for a in range(3):
         for i in range(size**2):
             tEle[a] = i
             for j in range(size**2):
@@ -59,16 +59,12 @@ def deleteOtherCol(cover,req):
     shape = cover.shape
 
     coverOut = cover
-    numDel = 0
-    for i in [x for x in range(shape[1]) if cover[shape[1]-1,x] != req[1]]:
-        if cover[req[0],i] == 1:
-            coverOut = np.delete(coverOut, i - numDel, axis = 1)
     
-    return coverOut
+    return coverOut[ :, (coverOut[req[0],:]==0)|(coverOut[coverOut.shape[0]-1,:]==req[1]) ]
 
 
 
-def algorithmX(cover, reqLst=[[]]):
+def algorithmX(cover, reqLst=[]):
     LOOPBREAKNUM = 100
 
     coverMid = cover
@@ -79,25 +75,43 @@ def algorithmX(cover, reqLst=[[]]):
     loopNum = 0
     while True:
         coverOut = coverMid
+        randArr = np.random.randint(0,coverOut.shape[1],size=coverOut.shape[0])
 
+        finalSet = {}
         isSuccess = True
-        for i in range(coverOut.shape[0]):
-            if np.count_nonzero( coverOut[i,:] ) == 0:
-                isSuccess = False
+        for loopNum1 in range(coverOut.shape[0]):
+
+            if coverOut.shape[0] == 1:
+                return coverOut
+
+            i = loopNum1%(coverOut.shape[0]-1) #so algorithm loops around
+
+            if np.count_nonzero(coverOut[i,:]) == 0:
+                print('fuckky')
                 break
+            subArray = coverOut[:, coverOut[i,:] == 1] #selects just the rows where there is a one
 
-            subArray = coverOut[[i,coverOut.shape[1]], coverOut[i,:] == 1]
 
-            randNum = np.random.randint(0,subArray.size[1])
-            safeCol = subArray[1,randNum]
+            randNum = randArr[i]%subArray.shape[1]
+            safeCol = subArray[coverOut.shape[0]-1,randNum]
 
-            coverOut = coverOut[:, (coverOut[i,:] == 1) | (coverOut[coverOut.size[0]-1,:] == safeCol)]
+            finalSet.add(safeCol)
+            
+
+            arrWhereIs1 = [x for x in range(coverOut.shape[0]) if coverOut[ x, coverOut[coverOut.shape[0]-1,:] == safeCol  ]]
+            for loopNum2 in range(len(arrWhereIs1)):
+                delIdx = arrWhereIs1[loopNum2] - loopNum2
+                coverOut = coverOut[:, (coverOut[delIdx,:] != 1) | (coverOut[coverOut.shape[0]-1,:] == safeCol)]
+                coverOut = coverOut[:, [x for x in range(coverOut.shape[1]) if x != delIdx] ]
         
         if isSuccess:
-            return coverOut[coverOut.shape[1]-1,:]
+            return coverOut[coverOut.shape[0]-1,:]
         
         if loopNum == LOOPBREAKNUM:
+            print('fuck')
             break
+
+        loopNum += 1
         
             
                 
