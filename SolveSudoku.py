@@ -1,3 +1,4 @@
+from numpy.core.fromnumeric import nonzero
 import main
 import numpy as np
 import collections
@@ -24,6 +25,8 @@ def bmtuple2int(bmtuple,m=9):
 
 
 def createSudokuCover(size=3):
+
+
     numberOfSets = (size**2)**3
     numberOfObjects = 4*((size**2)**2)
     sideLength = size**2
@@ -31,7 +34,8 @@ def createSudokuCover(size=3):
 
     cover = np.zeros( (numberOfObjects, numberOfSets), dtype=int) #row is the constraint sets, column is the possibility (row,column,num)
 
-    
+    #NOTE: FOR THE FOLLOWING CODE INSIDE THIS FUNCTION, ANY MENTION OF 'SET' SHOULD BE 'ELEMENT' AND VICE VERSA
+
     #sets the members of all the sets under restrictions row-column, column-number, number-row
     tEle=np.array([0,0,0])
     for a in range(3):
@@ -71,9 +75,10 @@ def removeEleSet(cover, arrRemainingEle, arrRemainingSets, setIdx):
     return [arrRemainingEle, arrRemainingSets] #return the remaining Elements and Sets in an vector array
 
 def findMinIdxAndEle(cover, arrRemainingEle, arrRemainingSets):
-    #Count all the ones and find the first element with the lowest number
+    #Count all the ones and find the first element with the lowest number of ones
     count1s = np.count_nonzero( cover[arrRemainingEle,:][:, arrRemainingSets] , axis = 1 )
-    min1sEleIdx = np.argmin(count1s)
+    #take the index of this element
+    min1sEleIdx = arrRemainingEle[np.argmin(count1s)]
 
     #Give a list of all the elements with this index
     setsWithEle = arrRemainingSets[np.nonzero(cover[min1sEleIdx,arrRemainingSets])[0]]
@@ -85,6 +90,16 @@ def getFinalLstEle(lst):
     lst.append(hold)
     return hold
 
+def removeReq(cover, arrRemainingEle,arrRemainingSets, reqlist):
+
+    setIdxLst = [bmtuple2int(reqtup) for reqtup in reqlist]
+    for setIdx in setIdxLst:
+        [arrRemainingEle, arrRemainingSets] = removeEleSet(cover, arrRemainingEle, arrRemainingSets, setIdx)
+        _ = findMinIdxAndEle(cover, arrRemainingEle, arrRemainingSets)
+    
+    return [arrRemainingEle, arrRemainingSets]
+
+
 def algorithmX(cover, reqLst = []):
     numberOfEle, numberOfSets = cover.shape
 
@@ -92,6 +107,9 @@ def algorithmX(cover, reqLst = []):
 
     arrRemainingEle = np.arange(numberOfEle)
     arrRemainingSets = np.arange(numberOfSets)
+
+    [arrRemainingEle, arrRemainingSets] = removeReq(cover, arrRemainingEle, arrRemainingSets, reqLst)
+
     treeArrs = [[arrRemainingEle,arrRemainingSets]] #Holds the remeining Elements and remaining Sets for each level of the tree, will work like a stack    
     
     treeSetsWithEle = collections.deque([]) #finds the index of the first row (element) with the lowest number of 1s
@@ -100,22 +118,16 @@ def algorithmX(cover, reqLst = []):
 
     finalListOfSets = collections.deque([])
     
-    while 1:
-        #if there are no more elements, so the sets cover all the elements, return the list of sets
-        if treeArrs[-1][0].size == 0:
-            return finalListOfSets
+    #if there are no more elements, so the sets cover all the elements, return the list of sets
+    if treeArrs[-1][0].size == 0:
+        return finalListOfSets
+    
+    while 1:        
 
-
-        #go to next level in tree
-        
-        
-
-        
-
-        #if the minimum number of 1s is 0 the problem isn't solved
+        #if the minimum number of 1s is 0 the problem isn't solved and we must go back up the tree
         if setsWithEle.size == 0:
 
-            #goes through the tree, if all branches have been looked at it goes back through the tree until it can find a new branch
+            #goes through the tree, if all branches have been looked at it goes back up the tree until it can find a new branch
             for i in range(len(treeLoc)):
                 if treeLoc[-1] < len(treeSetsWithEle[-1]) -1:
                     treeLoc[-1] = treeLoc[-1] +1
@@ -126,20 +138,29 @@ def algorithmX(cover, reqLst = []):
                 finalListOfSets.pop()
             
             setsWithEle = findMinIdxAndEle(cover, treeArrs[-1][0], treeArrs[-1][1])
-            #print(finalListOfSets)
-        else: #if the minimum number of ones is not 0 continue onto the next level
+
+        else: #if the minimum number of ones is not 0 continue onto the next level of Tree
             setIdx = treeSetsWithEle[-1][ treeLoc[-1] ] #Takes the matrix index of the set that we decided is in the solution
             finalListOfSets.append(setIdx)
             treeArrs.append( removeEleSet(cover, treeArrs[-1][0], treeArrs[-1][1], setIdx) )
+            if treeArrs[-1][0].size == 0:
+                return finalListOfSets
             setsWithEle = findMinIdxAndEle(cover, treeArrs[-1][0], treeArrs[-1][1])
             treeSetsWithEle.append(setsWithEle)
             treeLoc.append(0)
-        
-def lst2Board(lst):
-    board = np.zeros((9,9))
+
+def int2Board(lst):
+    board = np.zeros((9,9), dtype=int)
     for item in lst:
         t = int2bmtuple(item)
         board[t[0],t[1]] = t[2] +1
+    
+    return board
+
+def lst2Board(lst):
+    board = np.zeros((9,9), dtype=int)
+    for item in lst:
+        board[item[0],item[1]] = item[2] +1
     
     return board
 
@@ -147,9 +168,8 @@ def board2Lst(board):
     nonzeros = np.nonzero(board)
 
     lst=[]
-    for i, row in enumerate(noneZero):
-        for column in row:
-            lst.append( (i,column, board[i,column] ) )
+    for i in range(len(nonzeros[0])):
+        lst.append( (nonzeros[0][i],nonzeros[1][i],board[ nonzeros[0][i],nonzeros[1][i] ]) )
     
     return lst
 
