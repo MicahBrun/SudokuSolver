@@ -1,3 +1,5 @@
+# Micah Brown 2021
+
 from numpy.core.fromnumeric import nonzero
 import main
 import numpy as np
@@ -172,19 +174,4 @@ def board2Lst(board):
         lst.append( (nonzeros[0][i],nonzeros[1][i],board[ nonzeros[0][i],nonzeros[1][i] ]) )
     
     return lst
-
-
-
-
-
-
-
-
-
-
-          
-        
-
-
-
 
