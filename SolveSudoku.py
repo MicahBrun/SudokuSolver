@@ -86,11 +86,6 @@ def findMinIdxAndEle(cover, arrRemainingEle, arrRemainingSets):
 
     return setsWithEle
 
-def getFinalLstEle(lst):
-    hold = lst.pop()
-    lst.append(hold)
-    return hold
-
 def removeReq(cover, arrRemainingEle,arrRemainingSets, reqlist):
 
     setIdxLst = [bmtuple2int(reqtup) for reqtup in reqlist]
