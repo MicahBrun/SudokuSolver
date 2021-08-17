@@ -51,10 +51,10 @@ class Ui_MainWindow(object):
         
 
     def getSudokuMatrix(self):
-        self.sudokuMatrix = np.zeros((9,9))
+        self.sudokuMatrix = np.zeros((9,9), dtype=int)
         for i, row in enumerate(self.sudokuGrid):
             for j, spinbox in enumerate(row):
-                self.sudokuMatrix[i,j] = spinbox.value
+                self.sudokuMatrix[i,j] = spinbox.value()
     
     def updateSudokuGrid(self):
         for i, row in enumerate(self.sudokuGrid):
@@ -79,7 +79,6 @@ class Ui_MainWindow(object):
         self.minigrid = []
         self.createSudokuGrid(self.gridLayout, self.minigrid)
 
-        self.getSudokuMatrix()
 
 
         MainWindow.setCentralWidget(self.centralwidget)
@@ -95,10 +94,37 @@ class Ui_MainWindow(object):
         self.button.setText('Find Solution')
         self.button.move(600,40)
 
+        self.resetB = QtWidgets.QPushButton(MainWindow)
+        self.resetB.setText('reset')
+        self.resetB.move(600,80)
+
+        self.error_dialog = QtWidgets.QErrorMessage()
+
+
+        self.button.clicked.connect(self.clicked)
+        self.resetB.clicked.connect(self.resetSudoku)
+        self.getSudokuMatrix()
+
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "Sudoku Solver"))
+
+    def clicked(self):
+        self.getSudokuMatrix()
+        if np.count_nonzero(self.sudokuMatrix) == 9**2:
+            return
+        try:
+            self.sudokuMatrix = SS.SolveSudoku(self.sudokuMatrix)
+        except:
+            self.error_dialog.showMessage('This puzzle is not solvable!')
+            self.error_dialog.setWindowTitle('Error')
+            self.error_dialog.exec_()
+        self.updateSudokuGrid()
+    
+    def resetSudoku(self):
+        self.sudokuMatrix = np.zeros((9,9), dtype=int)
+        self.updateSudokuGrid()
 
 
 if __name__ == "__main__":

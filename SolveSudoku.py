@@ -1,7 +1,6 @@
 # Micah Brown 2021
 
 from numpy.core.fromnumeric import nonzero
-import main
 import numpy as np
 import collections
 
@@ -122,7 +121,7 @@ def algorithmX(cover, reqLst = []):
     
     #if there are no more elements, so the sets cover all the elements, return the list of sets
     if treeArrs[-1][0].size == 0:
-        return finalListOfSets
+        return list(finalListOfSets)
     
     while 1:        
 
@@ -146,7 +145,7 @@ def algorithmX(cover, reqLst = []):
             finalListOfSets.append(setIdx)
             treeArrs.append( removeEleSet(cover, treeArrs[-1][0], treeArrs[-1][1], setIdx) )
             if treeArrs[-1][0].size == 0:
-                return finalListOfSets
+                return list(finalListOfSets)
             setsWithEle = findMinIdxAndEle(cover, treeArrs[-1][0], treeArrs[-1][1])
             treeSetsWithEle.append(setsWithEle)
             treeLoc.append(0)
@@ -171,7 +170,12 @@ def board2Lst(board):
 
     lst=[]
     for i in range(len(nonzeros[0])):
-        lst.append( (nonzeros[0][i],nonzeros[1][i],board[ nonzeros[0][i],nonzeros[1][i] ]) )
+        lst.append( (nonzeros[0][i],nonzeros[1][i],board[ nonzeros[0][i],nonzeros[1][i] ] -1 ) )
     
     return lst
 
+def SolveSudoku(board):
+    cover = createSudokuCover()
+    reqLst = board2Lst(board)
+    solvedSquares = [int2bmtuple(idx) for idx in algorithmX(cover, reqLst) ]
+    return lst2Board(reqLst + solvedSquares)
