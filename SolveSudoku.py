@@ -36,7 +36,6 @@ def createSudokuCover(size=3):
     )  # row is the constraint sets, column is the possibility (row,column,num)
 
     # NOTE: FOR THE FOLLOWING CODE INSIDE THIS FUNCTION, ANY MENTION OF 'SET' SHOULD BE 'ELEMENT' AND VICE VERSA
-
     # sets the members of all the sets under restrictions row-column, column-number, number-row
     tEle = np.array([0, 0, 0])
     for a in range(3):
@@ -86,13 +85,13 @@ def removeEleSet(cover, arrRemainingEle, arrRemainingSets, setIdx):
     ]  # return the remaining Elements and Sets in an vector array
 
 
-def findMinIdxAndEle(cover, arrRemainingEle, arrRemainingSets):
+def give_sets(cover, arrRemainingEle, arrRemainingSets):
     # Count all the ones and find the first element with the lowest number of ones
     count1s = np.count_nonzero(cover[arrRemainingEle, :][:, arrRemainingSets], axis=1)
     # take the index of this element
     min1sEleIdx = arrRemainingEle[np.argmin(count1s)]
 
-    # Give a list of all the elements with this index
+    # Give a list of all the sets with this index
     setsWithEle = arrRemainingSets[np.nonzero(cover[min1sEleIdx, arrRemainingSets])[0]]
 
     return setsWithEle
@@ -105,23 +104,25 @@ def removeReq(cover, arrRemainingEle, arrRemainingSets, reqlist):
         [arrRemainingEle, arrRemainingSets] = removeEleSet(
             cover, arrRemainingEle, arrRemainingSets, setIdx
         )
-        _ = findMinIdxAndEle(cover, arrRemainingEle, arrRemainingSets)
+        _ = give_sets(cover, arrRemainingEle, arrRemainingSets)
 
     return [arrRemainingEle, arrRemainingSets]
 
 
 class AlgorithmXTree:
-    def __init__(self, initial_elements, initial_sets):
+    def __init__(self, initial_elements, initial_sets, initial_sets_with_element):
 
-        self.location = collections.deque([0])
+        self.location = collections.deque()
+        self.location.append(0)
         self.surviving_elements_tree = [initial_elements]
         self.surviving_sets_tree = [initial_sets]
 
-        self.sets_with_element_tree = collections.deque()
-        self.current_cover_sets = [collections.deque()]
+        self.sets_containing_least_covered__element_tree = [initial_sets_with_element]
+        self.current_cover_sets = collections.deque()
+        self.current_cover_sets.append(self.give_current_set())
 
-    def give_sets_with_element(self):
-        return self.sets_with_element_tree[-1]
+    def give_sets_with_least_covered_element(self):
+        return self.sets_containing_least_covered__element_tree[-1]
 
     def give_surviving_sets(self):
         return self.surviving_sets_tree[-1]
@@ -133,16 +134,16 @@ class AlgorithmXTree:
         return self.location[-1]
 
     def number_of_unchecked_sets_with_element(self):
-        return len(self.give_sets_with_element())
+        return len(self.give_sets_with_least_covered_element())
 
-    def go_up_a_branch(self):
+    def go_up_a_layer(self):
         self.location.pop()
         self.surviving_elements_tree.pop()
         self.surviving_sets_tree.pop()
-        self.sets_with_element_tree.pop()
+        self.sets_containing_least_covered__element_tree.pop()
         self.current_cover_sets.pop()
 
-    def is_on_final_branch(self):
+    def is_not_on_final_branch(self):
         return (
             self.give_branch_position()
             < self.number_of_unchecked_sets_with_element() - 1
@@ -151,72 +152,82 @@ class AlgorithmXTree:
     def increment_branch_position(self):
         self.location[-1] += 1
 
-    def give_final_cover_sets(self):
-        return list(self.current_cover_sets) + [
-            self.give_surviving_sets()[self.give_branch_position()]
-        ]
+    def give_current_set(self):
+        if len(self.give_sets_with_least_covered_element()) == 0:
+            return None
+        return self.give_sets_with_least_covered_element()[self.give_branch_position()]
 
-    def add_branch_layer(self):
-        pass
+    def give_final_cover_sets(self):
+        return list(self.current_cover_sets)  # + [self.give_current_set()]
+
+    def add_tree_layer(
+        self, surviving_elements, surviving_sets, sets_containing_least_covered_element
+    ):
+        self.location.append(0)
+        self.surviving_elements_tree.append(surviving_elements)
+        self.surviving_sets_tree.append(surviving_sets)
+        self.sets_containing_least_covered__element_tree.append(
+            sets_containing_least_covered_element
+        )
+        self.current_cover_sets.append(self.give_current_set())
+
+    def is_on_first_layer(self):
+        return len(self.location) <= 1
 
 
 def algorithmX(cover, reqLst=[]):
     numberOfEle, numberOfSets = cover.shape
-
-    treeLoc = collections.deque(
-        [0]
-    )  # Will function as a stack with information on the order in the tree one is
-
     initial_elements = np.arange(numberOfEle)
     initial_sets = np.arange(numberOfSets)
-
     [initial_elements, initial_sets] = removeReq(
         cover, initial_elements, initial_sets, reqLst
     )
+    sets_containing_least_covered_element = give_sets(
+        cover, initial_elements, initial_sets
+    )
 
-    treeArrs = [
-        [initial_elements, initial_sets]
-    ]  # Holds the remeining Elements and remaining Sets for each level of the tree, will work like a stack
+    if len(initial_elements) == 0:
+        return []
 
-    tree = AlgorithmXTree(initial_elements, initial_sets)
-
-    treeSetsWithEle = collections.deque(
-        []
-    )  # finds the index of the first row (element) with the lowest number of 1s
-    setsWithEle = findMinIdxAndEle(cover, initial_elements, initial_sets)
-    treeSetsWithEle.append(setsWithEle)
-    tree.sets_with_element_tree.add_sets_with_element_layer(setsWithEle)
-
-    finalListOfSets = collections.deque([])
-
-    # if there are no more elements, so the sets cover all the elements, return the list of sets
-    if treeArrs[-1][0].size == 0:
-        return list(finalListOfSets)
+    tree = AlgorithmXTree(
+        initial_elements, initial_sets, sets_containing_least_covered_element
+    )
 
     while 1:
-
         # if the minimum number of 1s is 0 the problem isn't solved and we must go back up the tree
-        if setsWithEle.size == 0:
+        if sets_containing_least_covered_element.size == 0:
 
             # goes through the tree, if all branches have been looked at it goes back up the tree until it can find a new branch
-            for i in range(len(treeLoc)):
-                if tree.is_on_final_branch():
-                    tree.increment_branch_position
+            while 1:
+                if tree.is_not_on_final_branch():
+                    tree.increment_branch_position()
                     break
-                tree.go_up_a_branch()
+                if tree.is_on_first_layer():
+                    return None  # returns None if unsolvable
+                tree.go_up_a_layer()
 
-            setsWithEle = findMinIdxAndEle(cover, treeArrs[-1][0], treeArrs[-1][1])
+            sets_containing_least_covered_element = give_sets(
+                cover, tree.give_surviving_elements(), tree.give_surviving_sets()
+            )
 
         else:  # if the minimum number of ones is not 0 continue onto the next level of Tree
-            if len(tree.give_surviving_elements) == 0:
+            surviving_elements, surviving_sets = removeEleSet(
+                cover,
+                tree.give_surviving_elements(),
+                tree.give_surviving_sets(),
+                tree.give_current_set(),
+            )
+            if len(surviving_elements) == 0:
                 return tree.give_final_cover_sets()
 
-            treeArrs.append(
-                removeEleSet(cover, treeArrs[-1][0], treeArrs[-1][1], setIdx)
+            sets_containing_least_covered_element = give_sets(
+                cover, surviving_elements, surviving_sets
             )
-            setsWithEle = findMinIdxAndEle(cover, treeArrs[-1][0], treeArrs[-1][1])
-            treeSetsWithEle.append(setsWithEle)
-            treeLoc.append(0)
+            tree.add_tree_layer(
+                surviving_elements,
+                surviving_sets,
+                sets_containing_least_covered_element,
+            )
 
 
 def int2Board(lst):
