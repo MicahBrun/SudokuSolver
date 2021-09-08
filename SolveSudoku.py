@@ -5,34 +5,38 @@ import numpy as np
 import collections
 
 
-def int2bmtuple(n, m=9):
+def int_to_base_9(n):
     # converts an integer into a tuple represeenting its digits in base 9
+    BASE = 9
+
     bm = np.array([0, 0, 0])
-    bm[0] = n // m // m
-    bm[1] = n // m % m
-    bm[2] = n % m
+    bm[0] = n // BASE // BASE
+    bm[1] = n // BASE % BASE
+    bm[2] = n % BASE
 
     return tuple(bm)
 
 
-def bmtuple2int(bmtuple, m=9):
+def base_9_to_int(bmtuple):
+    BASE = 9
+
     size = len(bmtuple)
 
     n = 0
     for i in range(size):
-        n += bmtuple[i] * m ** (size - 1 - i)
+        n += bmtuple[i] * BASE ** (size - 1 - i)
 
     return n
 
 
-def createSudokuCover(size=3):
+def create_sudoku_cover(size=3):
 
-    numberOfSets = (size ** 2) ** 3
-    numberOfObjects = 4 * ((size ** 2) ** 2)
+    number_of_sets = (size ** 2) ** 3
+    number_of_elements = 4 * ((size ** 2) ** 2)
     sideLength = size ** 2
 
     cover = np.zeros(
-        (numberOfObjects, numberOfSets), dtype=int
+        (number_of_elements, number_of_sets), dtype=int
     )  # row is the constraint sets, column is the possibility (row,column,num)
 
     # NOTE: FOR THE FOLLOWING CODE INSIDE THIS FUNCTION, ANY MENTION OF 'SET' SHOULD BE 'ELEMENT' AND VICE VERSA
@@ -46,8 +50,8 @@ def createSudokuCover(size=3):
                 for k in range(sideLength):
                     tEle[(a + 2) % 3] = k
 
-                    nEle = bmtuple2int(tEle)
-                    nSet = bmtuple2int(np.array([a, i, j]))
+                    nEle = base_9_to_int(tEle)
+                    nSet = base_9_to_int(np.array([a, i, j]))
                     cover[nSet, nEle] = 1
 
     # sets the members for the box restrictions
@@ -56,57 +60,64 @@ def createSudokuCover(size=3):
             for i2 in range(size):
                 for j2 in range(size):
                     for n in range(sideLength):
-                        nEle = bmtuple2int([size * i1 + i2, size * j1 + j2, n])
-                        nSet = bmtuple2int([3, 3 * i1 + j1, n])
+                        nEle = base_9_to_int([size * i1 + i2, size * j1 + j2, n])
+                        nSet = base_9_to_int([3, 3 * i1 + j1, n])
                         cover[nSet, nEle] = 1
 
     return cover
 
 
-def removeEleSet(cover, arrRemainingEle, arrRemainingSets, setIdx):
+def give_elements_and_sets_after_deletion(
+    cover, remaining_elements, remaining_sets, setIdx
+):
     # Performs the deletion part of Algorithm X which involves deleting all
     # elements that are in a set from our list as well as any set that contains these elements
 
-    corEleWith1 = np.nonzero(cover[arrRemainingEle, setIdx])[
+    corEleWith1 = np.nonzero(cover[remaining_elements, setIdx])[
         0
     ]  # for the given setIdx (column) finds all the elements that are in that set
     for ele in corEleWith1:  # for each element that is in the set
-        corSetWith1 = np.nonzero(cover[arrRemainingEle[ele], arrRemainingSets])[
+        corSetWith1 = np.nonzero(cover[remaining_elements[ele], remaining_sets])[
             0
         ]  # find all the sets (columns) that contain this element
-        arrRemainingSets = np.delete(arrRemainingSets, corSetWith1)  # And delete them
-    arrRemainingEle = np.delete(
-        arrRemainingEle, corEleWith1
+        remaining_sets = np.delete(remaining_sets, corSetWith1)  # And delete them
+    remaining_elements = np.delete(
+        remaining_elements, corEleWith1
     )  # Then remove all the elements (rows) that are in the set we chose
 
     return [
-        arrRemainingEle,
-        arrRemainingSets,
+        remaining_elements,
+        remaining_sets,
     ]  # return the remaining Elements and Sets in an vector array
 
 
-def give_sets(cover, arrRemainingEle, arrRemainingSets):
+def give_sets(cover, remaining_elements, remaining_sets):
     # Count all the ones and find the first element with the lowest number of ones
-    count1s = np.count_nonzero(cover[arrRemainingEle, :][:, arrRemainingSets], axis=1)
+    count1s = np.count_nonzero(cover[remaining_elements, :][:, remaining_sets], axis=1)
     # take the index of this element
-    min1sEleIdx = arrRemainingEle[np.argmin(count1s)]
+    least_covered_element_index = remaining_elements[np.argmin(count1s)]
 
     # Give a list of all the sets with this index
-    setsWithEle = arrRemainingSets[np.nonzero(cover[min1sEleIdx, arrRemainingSets])[0]]
+    sets_containing_least_covered_element = remaining_sets[
+        np.nonzero(cover[least_covered_element_index, remaining_sets])[0]
+    ]
 
-    return setsWithEle
+    return sets_containing_least_covered_element
 
 
-def removeReq(cover, arrRemainingEle, arrRemainingSets, reqlist):
+def removeReq(cover, remaining_elements, remaining_sets, reqlist):
 
-    setIdxLst = [bmtuple2int(reqtup) for reqtup in reqlist]
+    setIdxLst = [
+        base_9_to_int(sudoku_position_and_value)
+        for sudoku_position_and_value in reqlist
+    ]
     for setIdx in setIdxLst:
-        [arrRemainingEle, arrRemainingSets] = removeEleSet(
-            cover, arrRemainingEle, arrRemainingSets, setIdx
+        [remaining_elements, remaining_sets] = give_elements_and_sets_after_deletion(
+            cover, remaining_elements, remaining_sets, setIdx
         )
-        _ = give_sets(cover, arrRemainingEle, arrRemainingSets)
+        _ = give_sets(cover, remaining_elements, remaining_sets)
 
-    return [arrRemainingEle, arrRemainingSets]
+    return [remaining_elements, remaining_sets]
 
 
 class AlgorithmXTree:
@@ -211,7 +222,7 @@ def algorithmX(cover, reqLst=[]):
             )
 
         else:  # if the minimum number of ones is not 0 continue onto the next level of Tree
-            surviving_elements, surviving_sets = removeEleSet(
+            surviving_elements, surviving_sets = give_elements_and_sets_after_deletion(
                 cover,
                 tree.give_surviving_elements(),
                 tree.give_surviving_sets(),
@@ -233,7 +244,7 @@ def algorithmX(cover, reqLst=[]):
 def int2Board(lst):
     board = np.zeros((9, 9), dtype=int)
     for item in lst:
-        t = int2bmtuple(item)
+        t = int_to_base_9(item)
         board[t[0], t[1]] = t[2] + 1
 
     return board
@@ -260,7 +271,7 @@ def board2Lst(board):
 
 
 def SolveSudoku(board):
-    cover = createSudokuCover()
+    cover = create_sudoku_cover()
     reqLst = board2Lst(board)
-    solvedSquares = [int2bmtuple(idx) for idx in algorithmX(cover, reqLst)]
+    solvedSquares = [int_to_base_9(idx) for idx in algorithmX(cover, reqLst)]
     return lst2Board(reqLst + solvedSquares)
